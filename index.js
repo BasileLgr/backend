@@ -32,7 +32,7 @@ const getAccessToken = async () => {
 // Route pour récupérer les clips Twitch
 app.get('/clips', async (req, res) => {
     try {
-        const username = 'hakaiwrld';
+        const username = 'kamet0';
         if (!ACCESS_TOKEN) await getAccessToken();
 
         // Récupère l'ID du broadcaster
