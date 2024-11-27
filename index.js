@@ -17,6 +17,7 @@ const corsOptions = {
 // Appliquez les options CORS au middleware
 app.use(cors(corsOptions));
 
+// Fonction pour obtenir un access token
 const getAccessToken = async () => {
     const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
         params: {
@@ -28,11 +29,13 @@ const getAccessToken = async () => {
     ACCESS_TOKEN = response.data.access_token;
 };
 
+// Route pour récupérer les clips Twitch
 app.get('/clips', async (req, res) => {
     try {
         const username = 'hakaiwrld';
         if (!ACCESS_TOKEN) await getAccessToken();
 
+        // Récupère l'ID du broadcaster
         const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -43,6 +46,7 @@ app.get('/clips', async (req, res) => {
 
         const broadcaster_id = userResponse.data.data[0].id;
 
+        // Récupère les clips du broadcaster
         const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -54,7 +58,7 @@ app.get('/clips', async (req, res) => {
             },
         });
 
-        // Vérifiez que les URLs des clips sont valides
+        // Vérifie que les URLs des clips sont valides
         const validClips = clipsResponse.data.data.filter(
             (clip) => clip.embed_url && clip.embed_url.startsWith('https://')
         );
@@ -66,7 +70,7 @@ app.get('/clips', async (req, res) => {
     }
 });
 
-
+// Démarrage du serveur
 const PORT = process.env.PORT || 3001; // Render attribue un port via process.env.PORT
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
