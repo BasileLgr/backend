@@ -48,6 +48,7 @@ app.get('/clips', async (req, res) => {
     res.json(clipsResponse.data);
 });
 
-app.listen(3001, () => {
-    console.log('Backend running on http://localhost:3001');
+const PORT = process.env.PORT || 3001; // Render attribue un port via process.env.PORT
+app.listen(PORT, () => {
+    console.log(`Backend running on port ${PORT}`);
 });
