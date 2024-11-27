@@ -29,32 +29,43 @@ const getAccessToken = async () => {
 };
 
 app.get('/clips', async (req, res) => {
-    const username = 'hakaiwrld';
-    if (!ACCESS_TOKEN) await getAccessToken();
+    try {
+        const username = 'hakaiwrld';
+        if (!ACCESS_TOKEN) await getAccessToken();
 
-    const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
-        headers: {
-            'Client-ID': CLIENT_ID,
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-        params: { login: username },
-    });
+        const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
+            headers: {
+                'Client-ID': CLIENT_ID,
+                Authorization: `Bearer ${ACCESS_TOKEN}`,
+            },
+            params: { login: username },
+        });
 
-    const broadcaster_id = userResponse.data.data[0].id;
+        const broadcaster_id = userResponse.data.data[0].id;
 
-    const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
-        headers: {
-            'Client-ID': CLIENT_ID,
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-        },
-        params: {
-            broadcaster_id,
-            first: 10,
-        },
-    });
+        const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
+            headers: {
+                'Client-ID': CLIENT_ID,
+                Authorization: `Bearer ${ACCESS_TOKEN}`,
+            },
+            params: {
+                broadcaster_id,
+                first: 10,
+            },
+        });
 
-    res.json(clipsResponse.data);
+        // Vérifiez que les URLs des clips sont valides
+        const validClips = clipsResponse.data.data.filter(
+            (clip) => clip.embed_url && clip.embed_url.startsWith('https://')
+        );
+
+        res.json({ data: validClips });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des clips:', error);
+        res.status(500).json({ error: 'Erreur interne du serveur' });
+    }
 });
+
 
 const PORT = process.env.PORT || 3001; // Render attribue un port via process.env.PORT
 app.listen(PORT, () => {
