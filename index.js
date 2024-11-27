@@ -59,9 +59,10 @@ app.get('/clips', async (req, res) => {
         });
 
         // Vérifie que les URLs des clips sont valides
-        const validClips = clipsResponse.data.data.filter(
-            (clip) => clip.embed_url && clip.embed_url.startsWith('https://')
-        );
+        const validClips = clipsResponse.data.data.map((clip) => ({
+            ...clip,
+            embed_url: `${clip.embed_url}&parent=basilelgr.github.io`, // Ajoute automatiquement le domaine parent
+        }));
 
         res.json({ data: validClips });
     } catch (error) {
