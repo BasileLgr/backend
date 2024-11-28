@@ -45,15 +45,13 @@ app.get('/clips', async (req, res) => {
     if (!username) {
         return res.status(400).json({ error: 'Le paramètre username est requis' });
     }
-    if (!gameName) {
-        return res.status(400).json({ error: 'Le paramètre gameName est requis' });
-    }
 
     try {
         if (!ACCESS_TOKEN) await getAccessToken();
 
         const startDate = calculateStartDate(duration);
 
+        // Récupérer l'ID du diffuseur
         const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -68,24 +66,10 @@ app.get('/clips', async (req, res) => {
 
         const broadcaster_id = userResponse.data.data[0].id;
 
-        const gameResponse = await axios.get('https://api.twitch.tv/helix/games', {
-            headers: {
-                'Client-ID': CLIENT_ID,
-                Authorization: `Bearer ${ACCESS_TOKEN}`,
-            },
-            params: { name: gameName },
-        });
-
-        if (!gameResponse.data.data.length) {
-            return res.status(404).json({ error: 'Jeu introuvable' });
-        }
-
-        const game_id = gameResponse.data.data[0].id;
-
+        // Récupérer les clips pour le diffuseur
         const clipsParams = {
             broadcaster_id,
-            game_id,
-            first: 20,
+            first: 50, // Augmentez si nécessaire pour plus de résultats
         };
         if (startDate) clipsParams.started_at = startDate;
 
@@ -97,7 +81,30 @@ app.get('/clips', async (req, res) => {
             params: clipsParams,
         });
 
-        const validClips = clipsResponse.data.data.map((clip) => ({
+        let clips = clipsResponse.data.data;
+
+        // Si un nom de jeu est spécifié, filtrez les clips par le jeu
+        if (gameName) {
+            const gameResponse = await axios.get('https://api.twitch.tv/helix/games', {
+                headers: {
+                    'Client-ID': CLIENT_ID,
+                    Authorization: `Bearer ${ACCESS_TOKEN}`,
+                },
+                params: { name: gameName },
+            });
+
+            if (!gameResponse.data.data.length) {
+                return res.status(404).json({ error: 'Jeu introuvable' });
+            }
+
+            const game_id = gameResponse.data.data[0].id;
+
+            // Filtrer les clips pour le jeu spécifique
+            clips = clips.filter((clip) => clip.game_id === game_id);
+        }
+
+        // Ajouter le paramètre `parent` aux URLs des clips pour l'intégration
+        const validClips = clips.map((clip) => ({
             ...clip,
             embed_url: `${clip.embed_url}&parent=basilelgr.github.io`,
         }));
