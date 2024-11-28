@@ -16,18 +16,22 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 const getAccessToken = async () => {
-    const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
-        params: {
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            grant_type: 'client_credentials',
-        },
-    });
-    ACCESS_TOKEN = response.data.access_token;
+    try {
+        const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+            params: {
+                client_id: CLIENT_ID,
+                client_secret: CLIENT_SECRET,
+                grant_type: 'client_credentials',
+            },
+        });
+        ACCESS_TOKEN = response.data.access_token;
+    } catch (error) {
+        console.error('Erreur lors de la récupération du token d\'accès:', error);
+    }
 };
 
 const calculateStartDate = (duration) => {
-    if (duration === 'All') return null; // Pas de filtre
+    if (duration === 'All') return null;
     const startDate = new Date();
     if (duration === '24h') startDate.setDate(startDate.getDate() - 1);
     else if (duration === '7J') startDate.setDate(startDate.getDate() - 7);
@@ -36,18 +40,20 @@ const calculateStartDate = (duration) => {
 };
 
 app.get('/clips', async (req, res) => {
-    const username = req.query.username;
-    const gameName = req.query.gameName;
-    const duration = req.query.duration || '7J';
+    const { username, gameName, duration = '7J' } = req.query;
 
-    if (!username || !gameName) {
-        return res.status(400).json({ error: 'Username and gameName are required' });
+    if (!username) {
+        return res.status(400).json({ error: 'Le paramètre username est requis' });
+    }
+    if (!gameName) {
+        return res.status(400).json({ error: 'Le paramètre gameName est requis' });
     }
 
     try {
         if (!ACCESS_TOKEN) await getAccessToken();
 
         const startDate = calculateStartDate(duration);
+
         const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -56,7 +62,12 @@ app.get('/clips', async (req, res) => {
             params: { login: username },
         });
 
+        if (!userResponse.data.data.length) {
+            return res.status(404).json({ error: 'Diffuseur introuvable' });
+        }
+
         const broadcaster_id = userResponse.data.data[0].id;
+
         const gameResponse = await axios.get('https://api.twitch.tv/helix/games', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -65,7 +76,11 @@ app.get('/clips', async (req, res) => {
             params: { name: gameName },
         });
 
-        const game_id = gameResponse.data.data[0]?.id;
+        if (!gameResponse.data.data.length) {
+            return res.status(404).json({ error: 'Jeu introuvable' });
+        }
+
+        const game_id = gameResponse.data.data[0].id;
 
         const clipsParams = {
             broadcaster_id,
@@ -96,5 +111,5 @@ app.get('/clips', async (req, res) => {
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-    console.log(`Backend running on port ${PORT}`);
+    console.log(`Backend démarré sur le port ${PORT}`);
 });
