@@ -40,7 +40,7 @@ const calculateStartDate = (duration) => {
 };
 
 app.get('/clips', async (req, res) => {
-    const { username, gameName, duration = '7J', limit = 20, offset = null } = req.query;
+    const { username, gameName, duration = '7J', limit = 2, offset = null } = req.query;
 
     if (!username) {
         return res.status(400).json({ error: 'Le paramètre username est requis' });
