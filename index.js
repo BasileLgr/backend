@@ -7,17 +7,14 @@ const CLIENT_ID = 'fxxny3g1a5svpmrqphc4nz8suq4etx';
 const CLIENT_SECRET = 'c5iw3gkqipzq2hi90dwh061ktsskrx';
 let ACCESS_TOKEN = '';
 
-// Configurez CORS pour autoriser uniquement votre domaine frontend
 const corsOptions = {
-    origin: 'https://basilelgr.github.io', // Domaine de votre frontend
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE', // Méthodes HTTP autorisées
-    credentials: true, // Si vous utilisez des cookies ou des sessions
+    origin: 'https://basilelgr.github.io',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
 };
 
-// Appliquez les options CORS au middleware
 app.use(cors(corsOptions));
 
-// Fonction pour obtenir un access token
 const getAccessToken = async () => {
     const response = await axios.post('https://id.twitch.tv/oauth2/token', null, {
         params: {
@@ -29,13 +26,13 @@ const getAccessToken = async () => {
     ACCESS_TOKEN = response.data.access_token;
 };
 
-// Route pour récupérer les clips Twitch
 app.get('/clips', async (req, res) => {
+    const username = req.query.username;
+    if (!username) return res.status(400).json({ error: 'Username is required' });
+
     try {
-        const username = 'kamet0';
         if (!ACCESS_TOKEN) await getAccessToken();
 
-        // Récupère l'ID du broadcaster
         const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -46,7 +43,10 @@ app.get('/clips', async (req, res) => {
 
         const broadcaster_id = userResponse.data.data[0].id;
 
-        // Récupère les clips du broadcaster
+        const started_at = new Date();
+        started_at.setDate(started_at.getDate() - 7);
+        const started_at_iso = started_at.toISOString();
+
         const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -54,14 +54,14 @@ app.get('/clips', async (req, res) => {
             },
             params: {
                 broadcaster_id,
-                first: 10,
+                first: 20,
+                started_at: started_at_iso,
             },
         });
 
-        // Vérifie que les URLs des clips sont valides
         const validClips = clipsResponse.data.data.map((clip) => ({
             ...clip,
-            embed_url: `${clip.embed_url}&parent=basilelgr.github.io`, // Ajoute automatiquement le domaine parent
+            embed_url: `${clip.embed_url}&parent=basilelgr.github.io`,
         }));
 
         res.json({ data: validClips });
@@ -71,8 +71,7 @@ app.get('/clips', async (req, res) => {
     }
 });
 
-// Démarrage du serveur
-const PORT = process.env.PORT || 3001; // Render attribue un port via process.env.PORT
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Backend running on port ${PORT}`);
 });
