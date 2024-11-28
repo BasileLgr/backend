@@ -40,7 +40,7 @@ const calculateStartDate = (duration) => {
 };
 
 app.get('/clips', async (req, res) => {
-    const { username, gameName, duration = '7J' } = req.query;
+    const { username, gameName, duration = '7J', limit = 10, offset = 0 } = req.query;
 
     if (!username) {
         return res.status(400).json({ error: 'Le paramètre username est requis' });
@@ -67,7 +67,8 @@ app.get('/clips', async (req, res) => {
 
         const clipsParams = {
             broadcaster_id,
-            first: 50,
+            first: limit,
+            after: offset,
         };
         if (startDate) clipsParams.started_at = startDate;
 
