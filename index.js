@@ -104,6 +104,7 @@ app.get('/clips', async (req, res) => {
             ...clip,
             video_url: clip.thumbnail_url.replace('-preview-480x272.jpg', '.mp4'), // Assure le lien vidéo correct
             embed_url: `${clip.embed_url}&parent=basilelgr.github.io`,
+            download_url : clip.url
         }));
 
         const pagination = clipsResponse.data.pagination || null;
