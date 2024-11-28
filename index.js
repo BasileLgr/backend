@@ -26,7 +26,7 @@ const getAccessToken = async () => {
         });
         ACCESS_TOKEN = response.data.access_token;
     } catch (error) {
-        console.error('Erreur lors de la récupération du token d\'accès:', error);
+        console.error('Erreur lors de la récupération du token d\'accès:', error.message || error);
     }
 };
 
@@ -40,7 +40,7 @@ const calculateStartDate = (duration) => {
 };
 
 app.get('/clips', async (req, res) => {
-    const { username, gameName, duration = '7J', limit = 12, offset = null } = req.query;
+    const { username, gameName, duration = '7J', limit = 12, cursor = null } = req.query;
 
     if (!username) {
         return res.status(400).json({ error: 'Le paramètre username est requis' });
@@ -69,7 +69,7 @@ app.get('/clips', async (req, res) => {
             broadcaster_id,
             first: limit,
         };
-        if (offset) clipsParams.after = offset;
+        if (cursor) clipsParams.after = cursor;
         if (startDate) clipsParams.started_at = startDate;
 
         const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
@@ -102,6 +102,7 @@ app.get('/clips', async (req, res) => {
 
         const validClips = clips.map((clip) => ({
             ...clip,
+            video_url: clip.thumbnail_url.replace('-preview-480x272.jpg', '.mp4'), // Assure le lien vidéo correct
             embed_url: `${clip.embed_url}&parent=basilelgr.github.io`,
         }));
 
