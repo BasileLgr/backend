@@ -115,6 +115,86 @@ app.get('/clips', async (req, res) => {
     }
 });
 
+const generateDownloadUrl = (thumbnailUrl) => {
+    return thumbnailUrl.replace(/-preview-\d+x\d+\.jpg$/, '.mp4');
+};
+
+app.get('/clips', async (req, res) => {
+    const { username, gameName, duration = '7J', limit = 12, offset = null } = req.query;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Le paramètre username est requis' });
+    }
+
+    try {
+        if (!ACCESS_TOKEN) await getAccessToken();
+
+        const startDate = calculateStartDate(duration);
+
+        const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
+            headers: {
+                'Client-ID': CLIENT_ID,
+                Authorization: `Bearer ${ACCESS_TOKEN}`,
+            },
+            params: { login: username },
+        });
+
+        if (!userResponse.data.data.length) {
+            return res.status(404).json({ error: 'Diffuseur introuvable' });
+        }
+
+        const broadcaster_id = userResponse.data.data[0].id;
+
+        const clipsParams = {
+            broadcaster_id,
+            first: limit,
+        };
+        if (offset) clipsParams.after = offset;
+        if (startDate) clipsParams.started_at = startDate;
+
+        const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
+            headers: {
+                'Client-ID': CLIENT_ID,
+                Authorization: `Bearer ${ACCESS_TOKEN}`,
+            },
+            params: clipsParams,
+        });
+
+        let clips = clipsResponse.data.data;
+
+        if (gameName) {
+            const gameResponse = await axios.get('https://api.twitch.tv/helix/games', {
+                headers: {
+                    'Client-ID': CLIENT_ID,
+                    Authorization: `Bearer ${ACCESS_TOKEN}`,
+                },
+                params: { name: gameName },
+            });
+
+            if (!gameResponse.data.data.length) {
+                return res.status(404).json({ error: 'Jeu introuvable' });
+            }
+
+            const game_id = gameResponse.data.data[0].id;
+
+            clips = clips.filter((clip) => clip.game_id === game_id);
+        }
+
+        const validClips = clips.map((clip) => ({
+            ...clip,
+            embed_url: `${clip.embed_url}&parent=basilelgr.github.io`,
+            download_url: generateDownloadUrl(clip.thumbnail_url),
+        }));
+
+        const pagination = clipsResponse.data.pagination || null;
+
+        res.json({ data: validClips, pagination });
+    } catch (error) {
+        console.error('Erreur lors de la récupération des clips:', error.message || error);
+        res.status(500).json({ error: 'Erreur interne du serveur' });
+    }
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
     console.log(`Backend démarré sur le port ${PORT}`);
