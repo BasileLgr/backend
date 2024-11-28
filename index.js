@@ -40,7 +40,7 @@ const calculateStartDate = (duration) => {
 };
 
 app.get('/clips', async (req, res) => {
-    const { username, gameName, duration = '7J', limit = 10, offset = 0 } = req.query;
+    const { username, gameName, duration = '7J', limit = 10, offset = null } = req.query;
 
     if (!username) {
         return res.status(400).json({ error: 'Le paramètre username est requis' });
@@ -68,8 +68,8 @@ app.get('/clips', async (req, res) => {
         const clipsParams = {
             broadcaster_id,
             first: limit,
-            after: offset,
         };
+        if (offset) clipsParams.after = offset;
         if (startDate) clipsParams.started_at = startDate;
 
         const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
@@ -105,9 +105,11 @@ app.get('/clips', async (req, res) => {
             embed_url: `${clip.embed_url}&parent=basilelgr.github.io`,
         }));
 
-        res.json({ data: validClips });
+        const pagination = clipsResponse.data.pagination || null;
+
+        res.json({ data: validClips, pagination });
     } catch (error) {
-        console.error('Erreur lors de la récupération des clips:', error);
+        console.error('Erreur lors de la récupération des clips:', error.message || error);
         res.status(500).json({ error: 'Erreur interne du serveur' });
     }
 });
