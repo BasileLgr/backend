@@ -26,13 +26,28 @@ const getAccessToken = async () => {
     ACCESS_TOKEN = response.data.access_token;
 };
 
+const calculateStartDate = (duration) => {
+    if (duration === 'All') return null; // Pas de filtre
+    const startDate = new Date();
+    if (duration === '24h') startDate.setDate(startDate.getDate() - 1);
+    else if (duration === '7J') startDate.setDate(startDate.getDate() - 7);
+    else if (duration === '30J') startDate.setDate(startDate.getDate() - 30);
+    return startDate.toISOString();
+};
+
 app.get('/clips', async (req, res) => {
     const username = req.query.username;
-    if (!username) return res.status(400).json({ error: 'Username is required' });
+    const gameName = req.query.gameName;
+    const duration = req.query.duration || '7J';
+
+    if (!username || !gameName) {
+        return res.status(400).json({ error: 'Username and gameName are required' });
+    }
 
     try {
         if (!ACCESS_TOKEN) await getAccessToken();
 
+        const startDate = calculateStartDate(duration);
         const userResponse = await axios.get('https://api.twitch.tv/helix/users', {
             headers: {
                 'Client-ID': CLIENT_ID,
@@ -42,21 +57,29 @@ app.get('/clips', async (req, res) => {
         });
 
         const broadcaster_id = userResponse.data.data[0].id;
+        const gameResponse = await axios.get('https://api.twitch.tv/helix/games', {
+            headers: {
+                'Client-ID': CLIENT_ID,
+                Authorization: `Bearer ${ACCESS_TOKEN}`,
+            },
+            params: { name: gameName },
+        });
 
-        const started_at = new Date();
-        started_at.setDate(started_at.getDate() - 7);
-        const started_at_iso = started_at.toISOString();
+        const game_id = gameResponse.data.data[0]?.id;
+
+        const clipsParams = {
+            broadcaster_id,
+            game_id,
+            first: 20,
+        };
+        if (startDate) clipsParams.started_at = startDate;
 
         const clipsResponse = await axios.get('https://api.twitch.tv/helix/clips', {
             headers: {
                 'Client-ID': CLIENT_ID,
                 Authorization: `Bearer ${ACCESS_TOKEN}`,
             },
-            params: {
-                broadcaster_id,
-                first: 20,
-                started_at: started_at_iso,
-            },
+            params: clipsParams,
         });
 
         const validClips = clipsResponse.data.data.map((clip) => ({
